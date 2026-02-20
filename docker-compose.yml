@@ -1,19 +1,18 @@
 services:
   qwen3-tts:
     container_name: qwen3-tts
-    build: .
+    image: neosun/qwen3-tts:2.0.0
     ports:
       - "${PORT:-8766}:8766"
     environment:
       - PORT=8766
       - GPU_IDLE_TIMEOUT=${GPU_IDLE_TIMEOUT:-600}
-      - DEFAULT_MODEL=${DEFAULT_MODEL:-Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice}
       - CUDA_DEVICE=${CUDA_DEVICE:-cuda:0}
       - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-0}
-      - HF_HOME=/root/.cache/huggingface
+      - QWEN_TTS_MODEL_DIR=/app/models
+      - HF_HUB_OFFLINE=1
     volumes:
       - /tmp/qwen3-tts:/tmp/qwen3-tts
-      - ${HOME}/.cache/huggingface:/root/.cache/huggingface
     deploy:
       resources:
         reservations:

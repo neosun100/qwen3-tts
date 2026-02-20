@@ -1,58 +1,13 @@
-# Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
+*.pyc
+*.pyo
 *.egg-info/
-*.egg
 dist/
 build/
-.eggs/
-
-# Virtual environments
-venv/
-.venv/
-env/
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Environment
-.env
-!.env.example
-
-# Logs
-*.log
-
-# ML weights (large files)
-*.bin
-*.safetensors
-*.pt
-*.pth
-*.ckpt
-*.onnx
-
-# Audio output
-output_*.wav
-clone_*.wav
-decode_output.wav
-voice_design_reference.wav
-
-# Temp
-/tmp/
 .cache/
-
-# Jupyter
-.ipynb_checkpoints/
-
-# Misc
-*.bak
-*.backup
+*.wav
+*.pt
+*.bak*
+.env
+models/
+*.whl

@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qwen3-TTS v2.0.0</title>
+<style>
+:root{--bg:#1a1b2e;--bg2:#232440;--bg3:#2a2b4a;--card:#282a48;--border:#3a3c5e;--text:#e0e0f0;--text2:#a0a0c0;--accent:#6c5ce7;--accent2:#a29bfe;--green:#00b894;--red:#ff6b6b;--orange:#fdcb6e;--blue:#74b9ff;--radius:10px;--shadow:0 4px 20px rgba(0,0,0,0.3)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.header{background:linear-gradient(135deg,var(--bg2),var(--bg3));padding:20px 30px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.header h1{font-size:1.5em;background:linear-gradient(135deg,var(--accent2),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header .ver{color:var(--text2);font-size:.85em}
+.header-right{display:flex;align-items:center;gap:12px}
+.lang-sel{background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:.85em;cursor:pointer}
+.gpu-badge{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-size:.8em;color:var(--text2);display:flex;align-items:center;gap:6px;cursor:pointer}
+.gpu-badge .dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+.gpu-badge .dot.off{background:var(--text2)}
+.main{display:flex;height:calc(100vh - 80px)}
+.sidebar{width:280px;background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;flex-shrink:0;padding:16px}
+.sidebar h3{font-size:.85em;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px;padding:0 4px}
+.sidebar h3:first-child{margin-top:0}
+.speaker-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;cursor:pointer;transition:all .2s}
+.speaker-card:hover,.speaker-card.active{border-color:var(--accent);background:var(--bg3)}
+.speaker-card .name{font-weight:600;font-size:.9em}
+.speaker-card .meta{font-size:.75em;color:var(--text2);margin-top:2px}
+.content{flex:1;overflow-y:auto;padding:24px}
+.tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--bg2);border-radius:10px;padding:4px;border:1px solid var(--border)}
+.tab{padding:10px 20px;border-radius:8px;cursor:pointer;font-size:.9em;color:var(--text2);transition:all .2s;border:none;background:none;font-family:inherit}
+.tab:hover{color:var(--text)}
+.tab.active{background:var(--accent);color:#fff}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:.85em;color:var(--text2);margin-bottom:6px;font-weight:500}
+.form-group textarea,.form-group input[type=text],.form-group select{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:.9em;font-family:inherit;resize:vertical;transition:border-color .2s}
+.form-group textarea:focus,.form-group select:focus{outline:none;border-color:var(--accent)}
+.form-group textarea{min-height:100px}
+.form-row{display:flex;gap:12px}
+.form-row>*{flex:1}
+.btn{padding:10px 24px;border-radius:8px;border:none;cursor:pointer;font-size:.9em;font-weight:600;transition:all .2s;font-family:inherit}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#7c6cf0);color:#fff}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 15px rgba(108,92,231,.4)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-sm{padding:6px 14px;font-size:.8em;border-radius:6px}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text2)}
+.btn-outline:hover{border-color:var(--accent);color:var(--text)}
+.metrics-panel{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-top:16px}
+.metrics-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.metric{text-align:center}
+.metric .val{font-size:1.3em;font-weight:700;color:var(--accent2)}
+.metric .lbl{font-size:.75em;color:var(--text2);margin-top:2px}
+.metric.highlight .val{color:var(--green)}
+.audio-player{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;margin-top:16px}
+.audio-player audio{width:100%}
+.audio-player .download-row{display:flex;gap:8px;margin-top:8px;align-items:center}
+.status-bar{padding:10px 14px;border-radius:8px;font-size:.85em;margin-top:12px;display:flex;align-items:center;gap:8px}
+.status-bar.info{background:rgba(116,185,255,.1);border:1px solid rgba(116,185,255,.3);color:var(--blue)}
+.status-bar.success{background:rgba(0,184,148,.1);border:1px solid rgba(0,184,148,.3);color:var(--green)}
+.status-bar.error{background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.3);color:var(--red)}
+.status-bar.loading{background:rgba(108,92,231,.1);border:1px solid rgba(108,92,231,.3);color:var(--accent2)}
+.progress-bar{height:3px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden}
+.progress-bar .fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:2px;transition:width .3s;width:0}
+.chip{display:inline-block;padding:4px 10px;border-radius:20px;font-size:.75em;cursor:pointer;border:1px solid var(--border);color:var(--text2);margin:2px;transition:all .2s;background:var(--bg3)}
+.chip:hover{border-color:var(--accent);color:var(--text)}
+.collapse-header{cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;font-size:.85em;color:var(--text2);margin-bottom:8px}
+.collapse-header:hover{border-color:var(--accent)}
+.collapse-body{display:none;padding:12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-top:-4px;margin-bottom:12px}
+.collapse-body.open{display:block}
+.checkbox-row{display:flex;align-items:center;gap:8px;font-size:.85em;color:var(--text2);margin-bottom:8px}
+.checkbox-row input[type=checkbox]{accent-color:var(--accent)}
+.file-upload{border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:all .2s;color:var(--text2);font-size:.85em}
+.file-upload:hover{border-color:var(--accent);color:var(--text)}
+.file-upload.has-file{border-color:var(--green);background:rgba(0,184,148,.05)}
+.file-upload input{display:none}
+.desc{font-size:.85em;color:var(--text2);margin-bottom:16px;line-height:1.5}
+.disclaimer{text-align:center;padding:16px;font-size:.75em;color:var(--text2);border-top:1px solid var(--border);margin-top:24px}
+@media(max-width:900px){.main{flex-direction:column}.sidebar{width:100%;max-height:200px;border-right:none;border-bottom:1px solid var(--border)}.metrics-grid{grid-template-columns:repeat(2,1fr)}}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--accent2);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.stream-chunks{font-size:.8em;color:var(--text2);margin-top:4px}
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>🗣️ Qwen3-TTS</h1>
+    <span class="ver" id="headerSub">All-in-One TTS · Custom Voice · Voice Design · Voice Clone · v2.0.0</span>
+  </div>
+  <div class="header-right">
+    <select class="lang-sel" id="uiLang" onchange="switchLang(this.value)">
+      <option value="en">English</option><option value="zh-CN">简体中文</option>
+      <option value="zh-TW">繁體中文</option><option value="ja">日本語</option>
+    </select>
+    <div class="gpu-badge" id="gpuBadge" onclick="refreshGpu()" title="Click to refresh">
+      <span class="dot off" id="gpuDot"></span><span id="gpuText">GPU: --</span>
+    </div>
+    <button class="btn btn-sm btn-outline" onclick="offloadGpu()">🔻 Offload</button>
+  </div>
+</div>
+
+<div class="main">
+  <!-- Sidebar: Speakers -->
+  <div class="sidebar" id="sidebarPanel">
+    <h3 id="lbl_speakers">🎤 Speakers</h3>
+    <div id="speakerList"></div>
+    <h3 style="margin-top:20px" id="lbl_gpu_info">📊 GPU Info</h3>
+    <div id="gpuDetail" style="font-size:.8em;color:var(--text2);padding:4px"></div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="content">
+    <div class="tabs" role="tablist">
+      <button class="tab active" onclick="switchTab('cv')" id="tab_cv">🎤 Custom Voice</button>
+      <button class="tab" onclick="switchTab('vd')" id="tab_vd">🎨 Voice Design</button>
+      <button class="tab" onclick="switchTab('vc')" id="tab_vc">🔊 Voice Clone</button>
+      <button class="tab" onclick="switchTab('tk')" id="tab_tk">🔧 Tokenizer</button>
+    </div>
+
+    <!-- ═══ Custom Voice Tab ═══ -->
+    <div class="tab-content active" id="panel_cv">
+      <p class="desc" id="desc_cv">Generate speech with 9 preset premium voices. Add instructions to control emotion, speed, tone, and style.</p>
+      <div class="form-group">
+        <label id="lbl_text_cv" for="cv_text">Text to synthesize</label>
+        <textarea id="cv_text" rows="4" placeholder="Enter text..."></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label id="lbl_lang_cv">Language</label>
+          <select id="cv_lang"></select>
+        </div>
+        <div class="form-group">
+          <label id="lbl_speaker_cv">Speaker</label>
+          <select id="cv_speaker"></select>
+        </div>
+        <div class="form-group" style="flex:.5;display:flex;align-items:flex-end">
+          <button class="btn btn-sm btn-outline" onclick="fillSample('cv')" id="btn_sample_cv">📝 Sample</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label id="lbl_instruct_cv">Instruction (optional)</label>
+        <textarea id="cv_instruct" rows="2" placeholder="e.g. Speak with a sad voice / 用愤怒的语气说"></textarea>
+      </div>
+      <div style="margin-bottom:12px">
+        <span style="font-size:.8em;color:var(--text2)" id="lbl_inst_ex">💡 Examples: </span>
+        <span id="cv_inst_chips"></span>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="cv_stream"><label for="cv_stream" id="lbl_stream_cv">🔄 Streaming mode (PCM)</label>
+      </div>
+      <div class="collapse-header" onclick="toggleCollapse('cv_adv')" id="lbl_adv_cv">⚙️ Advanced Settings <span>▼</span></div>
+      <div class="collapse-body" id="cv_adv">
+        <div class="form-row"><div class="form-group"><label>top_k</label><input type="text" id="cv_top_k" value="50"></div>
+        <div class="form-group"><label>top_p</label><input type="text" id="cv_top_p" value="0.9"></div>
+        <div class="form-group"><label>temperature</label><input type="text" id="cv_temp" value="1.0"></div></div>
+        <div class="form-row"><div class="form-group"><label>repetition_penalty</label><input type="text" id="cv_rep" value="1.05"></div>
+        <div class="form-group"><label>max_new_tokens</label><input type="text" id="cv_mnt" value="2048"></div></div>
+      </div>
+      <button class="btn btn-primary" id="btn_gen_cv" onclick="generateCV()" style="width:100%;margin-top:8px">🎵 Generate</button>
+      <div id="cv_status" class="status-bar info" style="display:none"></div>
+      <div class="progress-bar" id="cv_progress"><div class="fill" id="cv_progress_fill"></div></div>
+      <div class="audio-player" id="cv_player" style="display:none">
+        <audio id="cv_audio" controls></audio>
+        <div class="download-row">
+          <button class="btn btn-sm btn-outline" onclick="downloadAudio('cv')">⬇️ Download WAV</button>
+          <span class="stream-chunks" id="cv_chunks"></span>
+        </div>
+      </div>
+      <div class="metrics-panel" id="cv_metrics" style="display:none">
+        <div class="metrics-grid">
+          <div class="metric"><div class="val" id="cv_m_load">--</div><div class="lbl" id="lbl_m_load_cv">Model Load</div></div>
+          <div class="metric"><div class="val" id="cv_m_gen">--</div><div class="lbl" id="lbl_m_gen_cv">Generation</div></div>
+          <div class="metric highlight"><div class="val" id="cv_m_total">--</div><div class="lbl" id="lbl_m_total_cv">Total Time</div></div>
+          <div class="metric"><div class="val" id="cv_m_dur">--</div><div class="lbl" id="lbl_m_dur_cv">Audio Duration</div></div>
+          <div class="metric"><div class="val" id="cv_m_size">--</div><div class="lbl" id="lbl_m_size_cv">Data Size</div></div>
+          <div class="metric"><div class="val" id="cv_m_rtf">--</div><div class="lbl">RTF</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Voice Design Tab ═══ -->
+    <div class="tab-content" id="panel_vd">
+      <p class="desc" id="desc_vd">Design a completely new voice by describing its characteristics in natural language.</p>
+      <div class="form-group">
+        <label>🎭 Quick Presets</label>
+        <div id="vd_presets"></div>
+      </div>
+      <div class="form-group">
+        <label id="lbl_text_vd">Text to synthesize</label>
+        <textarea id="vd_text" rows="4" placeholder="Enter text..."></textarea>
+      </div>
+      <div class="form-group">
+        <label id="lbl_lang_vd">Language</label>
+        <select id="vd_lang"></select>
+      </div>
+      <div class="form-group">
+        <label id="lbl_instruct_vd">Voice Description</label>
+        <textarea id="vd_instruct" rows="4" placeholder="Describe the voice: gender, pitch, emotion, speed..."></textarea>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="vd_stream"><label for="vd_stream" id="lbl_stream_vd">🔄 Streaming mode (PCM)</label>
+      </div>
+      <div class="collapse-header" onclick="toggleCollapse('vd_adv')">⚙️ Advanced Settings <span>▼</span></div>
+      <div class="collapse-body" id="vd_adv">
+        <div class="form-row"><div class="form-group"><label>top_k</label><input type="text" id="vd_top_k" value="50"></div>
+        <div class="form-group"><label>top_p</label><input type="text" id="vd_top_p" value="0.9"></div>
+        <div class="form-group"><label>temperature</label><input type="text" id="vd_temp" value="1.0"></div></div>
+        <div class="form-row"><div class="form-group"><label>repetition_penalty</label><input type="text" id="vd_rep" value="1.05"></div>
+        <div class="form-group"><label>max_new_tokens</label><input type="text" id="vd_mnt" value="2048"></div></div>
+      </div>
+      <button class="btn btn-primary" id="btn_gen_vd" onclick="generateVD()" style="width:100%;margin-top:8px">🎵 Generate</button>
+      <div id="vd_status" class="status-bar info" style="display:none"></div>
+      <div class="progress-bar" id="vd_progress"><div class="fill" id="vd_progress_fill"></div></div>
+      <div class="audio-player" id="vd_player" style="display:none">
+        <audio id="vd_audio" controls></audio>
+        <div class="download-row">
+          <button class="btn btn-sm btn-outline" onclick="downloadAudio('vd')">⬇️ Download WAV</button>
+          <span class="stream-chunks" id="vd_chunks"></span>
+        </div>
+      </div>
+      <div class="metrics-panel" id="vd_metrics" style="display:none">
+        <div class="metrics-grid">
+          <div class="metric"><div class="val" id="vd_m_load">--</div><div class="lbl">Model Load</div></div>
+          <div class="metric"><div class="val" id="vd_m_gen">--</div><div class="lbl">Generation</div></div>
+          <div class="metric highlight"><div class="val" id="vd_m_total">--</div><div class="lbl">Total Time</div></div>
+          <div class="metric"><div class="val" id="vd_m_dur">--</div><div class="lbl">Audio Duration</div></div>
+          <div class="metric"><div class="val" id="vd_m_size">--</div><div class="lbl">Data Size</div></div>
+          <div class="metric"><div class="val" id="vd_m_rtf">--</div><div class="lbl">RTF</div></div>
+        </div>
+      </div>
+    </div>
+    <!-- ═══ Voice Clone Tab ═══ -->
+    <div class="tab-content" id="panel_vc">
+      <p class="desc" id="desc_vc">Clone any voice from a 3-second audio clip. Supports cross-lingual cloning across 10 languages.</p>
+      <div class="form-group">
+        <label id="lbl_ref_audio">Reference Audio (3s+ recommended)</label>
+        <div class="file-upload" id="vc_ref_drop" onclick="document.getElementById('vc_ref_file').click()">
+          📁 Click or drag audio file here
+          <input type="file" id="vc_ref_file" accept="audio/*" onchange="onRefFileChange(this)">
+        </div>
+        <audio id="vc_ref_preview" controls style="width:100%;margin-top:8px;display:none"></audio>
+      </div>
+      <div class="form-group">
+        <label id="lbl_ref_text">Reference Text (transcript of ref audio)</label>
+        <textarea id="vc_ref_text" rows="2" placeholder="Transcript of the reference audio..."></textarea>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="vc_xvec"><label for="vc_xvec" id="lbl_xvec">X-Vector Only (no ref text needed, lower quality)</label>
+      </div>
+      <div class="form-group">
+        <label id="lbl_text_vc">Text to synthesize</label>
+        <textarea id="vc_text" rows="4" placeholder="Enter new text to speak in the cloned voice..."></textarea>
+      </div>
+      <div class="form-group">
+        <label id="lbl_lang_vc">Language</label>
+        <select id="vc_lang"></select>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="vc_stream"><label for="vc_stream" id="lbl_stream_vc">🔄 Streaming mode (PCM)</label>
+      </div>
+      <div class="collapse-header" onclick="toggleCollapse('vc_adv')">⚙️ Advanced Settings <span>▼</span></div>
+      <div class="collapse-body" id="vc_adv">
+        <div class="form-row"><div class="form-group"><label>top_k</label><input type="text" id="vc_top_k" value="50"></div>
+        <div class="form-group"><label>top_p</label><input type="text" id="vc_top_p" value="0.9"></div>
+        <div class="form-group"><label>temperature</label><input type="text" id="vc_temp" value="1.0"></div></div>
+        <div class="form-row"><div class="form-group"><label>repetition_penalty</label><input type="text" id="vc_rep" value="1.05"></div>
+        <div class="form-group"><label>max_new_tokens</label><input type="text" id="vc_mnt" value="2048"></div></div>
+      </div>
+      <button class="btn btn-primary" id="btn_gen_vc" onclick="generateVC()" style="width:100%;margin-top:8px">🎵 Generate</button>
+      <div id="vc_status" class="status-bar info" style="display:none"></div>
+      <div class="progress-bar" id="vc_progress"><div class="fill" id="vc_progress_fill"></div></div>
+      <div class="audio-player" id="vc_player" style="display:none">
+        <audio id="vc_audio" controls></audio>
+        <div class="download-row">
+          <button class="btn btn-sm btn-outline" onclick="downloadAudio('vc')">⬇️ Download WAV</button>
+          <span class="stream-chunks" id="vc_chunks"></span>
+        </div>
+      </div>
+      <div class="metrics-panel" id="vc_metrics" style="display:none">
+        <div class="metrics-grid">
+          <div class="metric"><div class="val" id="vc_m_load">--</div><div class="lbl">Model Load</div></div>
+          <div class="metric"><div class="val" id="vc_m_gen">--</div><div class="lbl">Generation</div></div>
+          <div class="metric highlight"><div class="val" id="vc_m_total">--</div><div class="lbl">Total Time</div></div>
+          <div class="metric"><div class="val" id="vc_m_dur">--</div><div class="lbl">Audio Duration</div></div>
+          <div class="metric"><div class="val" id="vc_m_size">--</div><div class="lbl">Data Size</div></div>
+          <div class="metric"><div class="val" id="vc_m_rtf">--</div><div class="lbl">RTF</div></div>
+        </div>
+      </div>
+      <hr style="border-color:var(--border);margin:24px 0">
+      <h3 style="color:var(--text2);font-size:.9em;margin-bottom:12px">💾 Save / Load Voice Prompt</h3>
+      <div class="form-row">
+        <div>
+          <button class="btn btn-sm btn-outline" onclick="saveVoicePrompt()">💾 Save Voice Prompt</button>
+          <span style="font-size:.8em;color:var(--text2);margin-left:8px" id="vc_save_status"></span>
+        </div>
+        <div>
+          <label class="btn btn-sm btn-outline" style="display:inline-block">📂 Load & Generate
+            <input type="file" accept=".pt" id="vc_prompt_file" style="display:none" onchange="loadVoicePrompt(this)">
+          </label>
+          <span style="font-size:.8em;color:var(--text2);margin-left:8px" id="vc_load_status"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Tokenizer Tab ═══ -->
+    <div class="tab-content" id="panel_tk">
+      <p class="desc">Encode audio to speech tokens and decode tokens back to audio using Qwen3-TTS-Tokenizer-12Hz.</p>
+      <div class="form-row" style="align-items:flex-start">
+        <div style="flex:1">
+          <h3 style="font-size:.9em;color:var(--text2);margin-bottom:12px">🔢 Encode (Audio → Tokens)</h3>
+          <div class="file-upload" onclick="document.getElementById('tk_enc_file').click()">
+            📁 Upload audio to encode
+            <input type="file" id="tk_enc_file" accept="audio/*" onchange="this.parentElement.classList.add('has-file');this.parentElement.textContent='✅ '+this.files[0].name">
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="encodeAudio()" style="margin-top:12px">🔢 Encode</button>
+          <div class="form-group" style="margin-top:12px">
+            <label>Token Codes (JSON)</label>
+            <textarea id="tk_codes" rows="6" readonly style="font-size:.8em;font-family:monospace"></textarea>
+          </div>
+          <div id="tk_enc_status" style="font-size:.8em;color:var(--text2)"></div>
+        </div>
+        <div style="flex:1">
+          <h3 style="font-size:.9em;color:var(--text2);margin-bottom:12px">🔊 Decode (Tokens → Audio)</h3>
+          <div class="form-group">
+            <label>Paste token codes JSON</label>
+            <textarea id="tk_dec_input" rows="6" placeholder="Paste codes from encode..." style="font-size:.8em;font-family:monospace"></textarea>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="decodeTokens()">🔊 Decode</button>
+          <div class="audio-player" id="tk_dec_player" style="display:none;margin-top:12px">
+            <audio id="tk_dec_audio" controls></audio>
+          </div>
+          <div id="tk_dec_status" style="font-size:.8em;color:var(--text2);margin-top:8px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="disclaimer" id="disclaimerText">
+      ⚠️ AI-generated audio for demo purposes only. Not for impersonation or illegal use. |
+      <strong>v2.0.0</strong> |
+      <a href="/docs" style="color:var(--accent2)">API Docs</a> ·
+      <a href="https://arxiv.org/abs/2601.15621" style="color:var(--accent2)">Paper</a>
+    </div>
+  </div>
+</div>
+<script>
+// ── Data ──
+const SPEAKERS = {{SPEAKERS_JSON}};
+const LANGUAGES = {{LANGUAGES_JSON}};
+const SPEAKER_INFO = {{SPEAKER_INFO_JSON}};
+const SAMPLE_TEXTS = {{SAMPLE_TEXTS_JSON}};
+const INSTRUCT_EXAMPLES = {{INSTRUCT_EXAMPLES_JSON}};
+const VOICE_DESIGN_EXAMPLES = {{VOICE_DESIGN_EXAMPLES_JSON}};
+const I18N = {{I18N_JSON}};
+
+let currentLang = 'en';
+let audioBlobs = {};  // store generated audio blobs per tab
+
+// ── Init ──
+document.addEventListener('DOMContentLoaded', () => {
+  populateSpeakers();
+  populateSelects();
+  populateChips();
+  populatePresets();
+  refreshGpu();
+});
+
+function populateSpeakers() {
+  const el = document.getElementById('speakerList');
+  el.innerHTML = SPEAKERS.map((s,i) => {
+    const info = SPEAKER_INFO[s];
+    return `<div class="speaker-card${i===0?' active':''}" onclick="selectSpeaker('${s}',this)" data-speaker="${s}">
+      <div class="name">${s} ${info.gender==='Female'?'♀':'♂'}</div>
+      <div class="meta">${info.native} · ${info.desc_en}</div></div>`;
+  }).join('');
+}
+
+function selectSpeaker(name, el) {
+  document.querySelectorAll('.speaker-card').forEach(c=>c.classList.remove('active'));
+  if(el) el.classList.add('active');
+  document.getElementById('cv_speaker').value = name;
+}
+
+function populateSelects() {
+  ['cv_lang','vd_lang','vc_lang'].forEach(id => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = LANGUAGES.map(l=>`<option value="${l}">${l}</option>`).join('');
+  });
+  const spkSel = document.getElementById('cv_speaker');
+  spkSel.innerHTML = SPEAKERS.map(s=>`<option value="${s}">${s}</option>`).join('');
+}
+
+function populateChips() {
+  const el = document.getElementById('cv_inst_chips');
+  const all = [...INSTRUCT_EXAMPLES.en.slice(0,3), ...INSTRUCT_EXAMPLES.zh.slice(0,3)];
+  el.innerHTML = all.map(t=>`<span class="chip" onclick="document.getElementById('cv_instruct').value=this.textContent">${t}</span>`).join('');
+}
+
+function populatePresets() {
+  const el = document.getElementById('vd_presets');
+  el.innerHTML = VOICE_DESIGN_EXAMPLES.map((ex,i) =>
+    `<span class="chip" onclick="applyPreset(${i})">${ex.label}</span>`
+  ).join('');
+}
+
+function applyPreset(i) {
+  const ex = VOICE_DESIGN_EXAMPLES[i];
+  document.getElementById('vd_text').value = ex.text;
+  document.getElementById('vd_instruct').value = ex.instruct;
+  document.getElementById('vd_lang').value = ex.lang;
+}
+
+function fillSample(prefix) {
+  const lang = document.getElementById(prefix+'_lang').value;
+  const text = SAMPLE_TEXTS[lang] || '';
+  document.getElementById(prefix+'_text').value = text;
+}
+
+// ── Tabs ──
+function switchTab(id) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab_'+id).classList.add('active');
+  document.getElementById('panel_'+id).classList.add('active');
+}
+
+function toggleCollapse(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+
+// ── Status helpers ──
+function setStatus(prefix, type, msg) {
+  const el = document.getElementById(prefix+'_status');
+  el.style.display = 'flex';
+  el.className = 'status-bar ' + type;
+  el.innerHTML = (type==='loading'?'<span class="spinner"></span>':'')+msg;
+}
+
+function setProgress(prefix, pct) {
+  document.getElementById(prefix+'_progress_fill').style.width = pct+'%';
+}
+
+function showMetrics(prefix, data) {
+  const p = document.getElementById(prefix+'_metrics');
+  p.style.display = 'block';
+  document.getElementById(prefix+'_m_load').textContent = data.load.toFixed(3)+'s';
+  document.getElementById(prefix+'_m_gen').textContent = data.gen.toFixed(3)+'s';
+  document.getElementById(prefix+'_m_total').textContent = data.total.toFixed(3)+'s';
+  document.getElementById(prefix+'_m_dur').textContent = data.dur.toFixed(2)+'s';
+  document.getElementById(prefix+'_m_size').textContent = (data.size/1024).toFixed(0)+' KB';
+  document.getElementById(prefix+'_m_rtf').textContent = data.rtf.toFixed(3)+'x';
+}
+
+function showAudio(prefix, blob, autoplay) {
+  audioBlobs[prefix] = blob;
+  const url = URL.createObjectURL(blob);
+  const player = document.getElementById(prefix+'_player');
+  const audio = document.getElementById(prefix+'_audio');
+  player.style.display = 'block';
+  audio.src = url;
+  if(autoplay) audio.play().catch(()=>{});
+}
+
+function downloadAudio(prefix) {
+  if(!audioBlobs[prefix]) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(audioBlobs[prefix]);
+  a.download = prefix+'_output.wav';
+  a.click();
+}
+
+// ── GPU ──
+async function refreshGpu() {
+  try {
+    const r = await fetch('/api/gpu-status');
+    const d = await r.json();
+    const dot = document.getElementById('gpuDot');
+    const txt = document.getElementById('gpuText');
+    dot.className = 'dot ' + (d.loaded?'':'off');
+    txt.textContent = d.loaded ? d.model_type + ' · ' + d.memory_allocated_mb+'MB' : 'No model';
+    document.getElementById('gpuDetail').innerHTML = [
+      d.gpu_name||'--',
+      'VRAM: '+(d.memory_allocated_mb||0)+'MB / '+(d.memory_reserved_mb||0)+'MB',
+      d.loaded?'Model: '+d.model_type:'💤 Idle',
+      d.idle_seconds!=null?'Idle: '+d.idle_seconds+'s':''
+    ].filter(Boolean).join('<br>');
+  } catch(e) { console.error(e); }
+}
+
+async function offloadGpu() {
+  await fetch('/api/gpu-offload',{method:'POST'});
+  refreshGpu();
+}
+
+// ── File upload ──
+function onRefFileChange(input) {
+  if(input.files.length) {
+    const drop = document.getElementById('vc_ref_drop');
+    drop.classList.add('has-file');
+    drop.textContent = '✅ ' + input.files[0].name;
+    const preview = document.getElementById('vc_ref_preview');
+    preview.src = URL.createObjectURL(input.files[0]);
+    preview.style.display = 'block';
+  }
+}
+
+// ── Get advanced params ──
+function getAdv(prefix) {
+  return {
+    top_k: parseInt(document.getElementById(prefix+'_top_k').value)||50,
+    top_p: parseFloat(document.getElementById(prefix+'_top_p').value)||0.9,
+    temperature: parseFloat(document.getElementById(prefix+'_temp').value)||1.0,
+    repetition_penalty: parseFloat(document.getElementById(prefix+'_rep').value)||1.05,
+    max_new_tokens: parseInt(document.getElementById(prefix+'_mnt').value)||2048,
+  };
+}
+// ── PCM streaming playback via Web Audio API ──
+async function streamPCM(url, body, prefix, isFormData) {
+  const t0 = performance.now();
+  setStatus(prefix, 'loading', 'Generating (streaming)...');
+  setProgress(prefix, 10);
+  const opts = isFormData
+    ? {method:'POST', body: body}
+    : {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)};
+  const resp = await fetch(url, opts);
+  if(!resp.ok) {
+    const err = await resp.text();
+    throw new Error(err);
+  }
+  const sr = parseInt(resp.headers.get('X-Sample-Rate'))||24000;
+  const reader = resp.body.getReader();
+  const chunks = [];
+  let totalBytes = 0, chunkCount = 0, ttfb = null;
+  setProgress(prefix, 30);
+  while(true) {
+    const {done, value} = await reader.read();
+    if(done) break;
+    if(ttfb===null) ttfb = performance.now()-t0;
+    chunks.push(value);
+    totalBytes += value.length;
+    chunkCount++;
+    const el = document.getElementById(prefix+'_chunks');
+    if(el) el.textContent = `Chunks: ${chunkCount} · ${(totalBytes/1024).toFixed(0)} KB · TTFB: ${(ttfb/1000).toFixed(3)}s`;
+    setProgress(prefix, 30 + Math.min(60, chunkCount*5));
+  }
+  const tTotal = (performance.now()-t0)/1000;
+  setProgress(prefix, 95);
+  // Combine chunks into PCM buffer
+  const pcm = new Uint8Array(totalBytes);
+  let offset = 0;
+  for(const c of chunks) { pcm.set(c, offset); offset += c.length; }
+  // Convert s16le PCM to float32 for AudioContext
+  const samples = new Float32Array(totalBytes/2);
+  const view = new DataView(pcm.buffer);
+  for(let i=0;i<samples.length;i++) samples[i] = view.getInt16(i*2, true)/32768;
+  // Create WAV blob for <audio> playback and download
+  const wavBlob = pcmToWav(samples, sr);
+  showAudio(prefix, wavBlob, true);
+  setProgress(prefix, 100);
+  const dur = samples.length/sr;
+  const genTime = tTotal;
+  showMetrics(prefix, {load:0, gen:genTime, total:tTotal, dur:dur, size:totalBytes, rtf: genTime/dur});
+  setStatus(prefix, 'success', `✅ Streaming complete · ${dur.toFixed(1)}s · ${chunkCount} chunks · TTFB: ${(ttfb/1000).toFixed(3)}s`);
+  refreshGpu();
+}
+
+// ── Standard (non-streaming) generation ──
+async function generateStandard(url, body, prefix, isFormData) {
+  const t0 = performance.now();
+  setStatus(prefix, 'loading', 'Generating...');
+  setProgress(prefix, 20);
+  const opts = isFormData
+    ? {method:'POST', body: body}
+    : {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)};
+  const resp = await fetch(url, opts);
+  if(!resp.ok) {
+    const err = await resp.text();
+    throw new Error(err);
+  }
+  setProgress(prefix, 80);
+  const blob = await resp.blob();
+  const tTotal = (performance.now()-t0)/1000;
+  showAudio(prefix, blob, true);
+  setProgress(prefix, 100);
+  // Read server-side timing from headers
+  const sLoad = parseFloat(resp.headers.get('X-Time-Load'))||0;
+  const sGen = parseFloat(resp.headers.get('X-Time-Gen'))||0;
+  const sTotal = parseFloat(resp.headers.get('X-Time-Total'))||tTotal;
+  const sDur = parseFloat(resp.headers.get('X-Audio-Duration'))||0;
+  // Decode to get duration if not in headers
+  let dur = sDur;
+  if(!dur) {
+    try {
+      const actx = new (window.AudioContext||window.webkitAudioContext)();
+      const decoded = await actx.decodeAudioData(await blob.slice().arrayBuffer());
+      dur = decoded.duration;
+      actx.close();
+    } catch(e) { dur = blob.size / (24000*2); }
+  }
+  showMetrics(prefix, {load:sLoad, gen:sGen, total:sTotal, dur:dur, size:blob.size, rtf: sGen/dur||0});
+  setStatus(prefix, 'success', `✅ Generated · ${dur.toFixed(1)}s · ${(blob.size/1024).toFixed(0)} KB · ${sGen.toFixed(1)}s`);
+  refreshGpu();
+}
+
+// ── PCM to WAV helper ──
+function pcmToWav(samples, sr) {
+  const buf = new ArrayBuffer(44 + samples.length*2);
+  const v = new DataView(buf);
+  const writeStr = (o,s) => { for(let i=0;i<s.length;i++) v.setUint8(o+i,s.charCodeAt(i)); };
+  writeStr(0,'RIFF'); v.setUint32(4,36+samples.length*2,true); writeStr(8,'WAVE');
+  writeStr(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+  v.setUint32(24,sr,true); v.setUint32(28,sr*2,true); v.setUint16(32,2,true); v.setUint16(34,16,true);
+  writeStr(36,'data'); v.setUint32(40,samples.length*2,true);
+  for(let i=0;i<samples.length;i++) v.setInt16(44+i*2, Math.max(-32768,Math.min(32767,samples[i]*32768)),true);
+  return new Blob([buf],{type:'audio/wav'});
+}
+
+// ── Custom Voice Generate ──
+async function generateCV() {
+  const text = document.getElementById('cv_text').value.trim();
+  if(!text) return setStatus('cv','error','❌ Please enter text');
+  const streaming = document.getElementById('cv_stream').checked;
+  const body = {
+    text, language: document.getElementById('cv_lang').value,
+    speaker: document.getElementById('cv_speaker').value,
+    instruct: document.getElementById('cv_instruct').value.trim(),
+    ...getAdv('cv')
+  };
+  const btn = document.getElementById('btn_gen_cv');
+  btn.disabled = true;
+  try {
+    if(streaming) await streamPCM('/api/tts/custom-voice/stream', body, 'cv', false);
+    else await generateStandard('/api/tts/custom-voice', body, 'cv', false);
+  } catch(e) { setStatus('cv','error','❌ '+e.message); }
+  btn.disabled = false;
+}
+
+// ── Voice Design Generate ──
+async function generateVD() {
+  const text = document.getElementById('vd_text').value.trim();
+  const instruct = document.getElementById('vd_instruct').value.trim();
+  if(!text) return setStatus('vd','error','❌ Please enter text');
+  if(!instruct) return setStatus('vd','error','❌ Please enter voice description');
+  const streaming = document.getElementById('vd_stream').checked;
+  const body = { text, language: document.getElementById('vd_lang').value, instruct, ...getAdv('vd') };
+  const btn = document.getElementById('btn_gen_vd');
+  btn.disabled = true;
+  try {
+    if(streaming) await streamPCM('/api/tts/voice-design/stream', body, 'vd', false);
+    else await generateStandard('/api/tts/voice-design', body, 'vd', false);
+  } catch(e) { setStatus('vd','error','❌ '+e.message); }
+  btn.disabled = false;
+}
+
+// ── Voice Clone Generate ──
+async function generateVC() {
+  const text = document.getElementById('vc_text').value.trim();
+  const fileInput = document.getElementById('vc_ref_file');
+  if(!text) return setStatus('vc','error','❌ Please enter text');
+  if(!fileInput.files.length) return setStatus('vc','error','❌ Please upload reference audio');
+  const xvec = document.getElementById('vc_xvec').checked;
+  const refText = document.getElementById('vc_ref_text').value.trim();
+  if(!xvec && !refText) return setStatus('vc','error','❌ Reference text required (or enable X-Vector Only)');
+  const streaming = document.getElementById('vc_stream').checked;
+  const fd = new FormData();
+  fd.append('text', text);
+  fd.append('language', document.getElementById('vc_lang').value);
+  fd.append('ref_text', refText);
+  fd.append('x_vector_only_mode', xvec);
+  fd.append('ref_audio', fileInput.files[0]);
+  const adv = getAdv('vc');
+  Object.entries(adv).forEach(([k,v])=>fd.append(k,v));
+  const btn = document.getElementById('btn_gen_vc');
+  btn.disabled = true;
+  try {
+    if(streaming) await streamPCM('/api/tts/voice-clone/stream', fd, 'vc', true);
+    else await generateStandard('/api/tts/voice-clone', fd, 'vc', true);
+  } catch(e) { setStatus('vc','error','❌ '+e.message); }
+  btn.disabled = false;
+}
+
+// ── Voice Prompt Save/Load ──
+async function saveVoicePrompt() {
+  const fileInput = document.getElementById('vc_ref_file');
+  if(!fileInput.files.length) { document.getElementById('vc_save_status').textContent='❌ Upload ref audio first'; return; }
+  const fd = new FormData();
+  fd.append('ref_audio', fileInput.files[0]);
+  fd.append('ref_text', document.getElementById('vc_ref_text').value);
+  fd.append('x_vector_only_mode', document.getElementById('vc_xvec').checked);
+  document.getElementById('vc_save_status').textContent='Saving...';
+  try {
+    const r = await fetch('/api/voice-prompt/save', {method:'POST', body:fd});
+    if(!r.ok) throw new Error(await r.text());
+    const blob = await r.blob();
+    const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='voice_prompt.pt'; a.click();
+    document.getElementById('vc_save_status').textContent='✅ Saved & downloaded';
+  } catch(e) { document.getElementById('vc_save_status').textContent='❌ '+e.message; }
+}
+
+async function loadVoicePrompt(input) {
+  if(!input.files.length) return;
+  const text = document.getElementById('vc_text').value.trim();
+  if(!text) { document.getElementById('vc_load_status').textContent='❌ Enter text first'; return; }
+  const fd = new FormData();
+  fd.append('voice_prompt', input.files[0]);
+  fd.append('text', text);
+  fd.append('language', document.getElementById('vc_lang').value);
+  document.getElementById('vc_load_status').textContent='Generating...';
+  try {
+    const r = await fetch('/api/tts/voice-clone-from-prompt', {method:'POST', body:fd});
+    if(!r.ok) throw new Error(await r.text());
+    const blob = await r.blob();
+    showAudio('vc', blob);
+    document.getElementById('vc_load_status').textContent='✅ Generated from saved voice';
+  } catch(e) { document.getElementById('vc_load_status').textContent='❌ '+e.message; }
+}
+
+// ── Tokenizer ──
+async function encodeAudio() {
+  const f = document.getElementById('tk_enc_file');
+  if(!f.files.length) { document.getElementById('tk_enc_status').textContent='❌ Upload audio'; return; }
+  const fd = new FormData(); fd.append('ref_audio', f.files[0]);
+  document.getElementById('tk_enc_status').textContent='Encoding...';
+  try {
+    const r = await fetch('/api/tokenizer/encode', {method:'POST', body:fd});
+    if(!r.ok) throw new Error(await r.text());
+    const d = await r.json();
+    document.getElementById('tk_codes').value = JSON.stringify(d.codes);
+    document.getElementById('tk_enc_status').textContent=`✅ ${d.num_frames} frames`;
+  } catch(e) { document.getElementById('tk_enc_status').textContent='❌ '+e.message; }
+}
+
+async function decodeTokens() {
+  const raw = document.getElementById('tk_dec_input').value.trim();
+  if(!raw) { document.getElementById('tk_dec_status').textContent='❌ Paste codes'; return; }
+  document.getElementById('tk_dec_status').textContent='Decoding...';
+  try {
+    const codes = JSON.parse(raw);
+    const r = await fetch('/api/tokenizer/decode', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(codes)});
+    if(!r.ok) throw new Error(await r.text());
+    const blob = await r.blob();
+    const player = document.getElementById('tk_dec_player');
+    player.style.display='block';
+    document.getElementById('tk_dec_audio').src = URL.createObjectURL(blob);
+    document.getElementById('tk_dec_status').textContent='✅ Decoded';
+  } catch(e) { document.getElementById('tk_dec_status').textContent='❌ '+e.message; }
+}
+
+// ── i18n ──
+function switchLang(lang) {
+  currentLang = lang;
+  const t = I18N[lang] || I18N['en'];
+  const set = (id,key) => { const el=document.getElementById(id); if(el&&t[key]) el.textContent=t[key]; };
+  document.getElementById('headerSub').textContent = t.subtitle + ' · v2.0.0';
+  set('tab_cv','custom_voice'); set('tab_vd','voice_design'); set('tab_vc','voice_clone');
+  set('desc_cv','desc_cv'); set('desc_vd','desc_vd'); set('desc_vc','desc_vc');
+  set('lbl_text_cv','text'); set('lbl_lang_cv','lang'); set('lbl_speaker_cv','speaker');
+  set('lbl_instruct_cv','instruct'); set('lbl_text_vd','text'); set('lbl_lang_vd','lang');
+  set('lbl_instruct_vd','instruct'); set('lbl_text_vc','text'); set('lbl_lang_vc','lang');
+  set('lbl_ref_audio','ref_audio'); set('lbl_ref_text','ref_text'); set('lbl_xvec','xvec');
+  ['btn_gen_cv','btn_gen_vd','btn_gen_vc'].forEach(id => {
+    const el=document.getElementById(id); if(el) el.textContent=t.generate;
+  });
+  const disc = document.getElementById('disclaimerText');
+  if(disc) disc.innerHTML = t.disclaimer+' | <strong>v2.0.0</strong> | <a href="/docs" style="color:var(--accent2)">API Docs</a> · <a href="https://arxiv.org/abs/2601.15621" style="color:var(--accent2)">Paper</a>';
+}
+</script>
+</body>
+</html>
